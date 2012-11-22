@@ -1,8 +1,34 @@
+# google app engine app to take an input URL,
+# then display its contents on a separate page
+# idea is that if one's internet connection blocks a site,
+# this should be able to retrieve the site via google's
+# computing resources and then display them to the user.
+
+# of course it's likely that embedded objects from the
+# same location as the blocked site (e.g., pics, video)
+# will not display on the output. so better for wikipedia
+# than tumblr say
+# TODO: is it possible to use some scraper, say
+# BeautifulSoup or scrapy or wget, to download such objects
+# and display the page?
+
+# originally, this was meant to be an app to download
+# youtube videos. however, i ran into various issues:
+# (1) the state-of-the-art python program for this -
+#     youtube-dl - uses certain python modules (e.g.,
+#     ctypes, socket) that are not supported in appengine
+# (2) even if one were to package this up as an executable,
+#     appengine does not allow executables to be run
+# (3) i looked into various alternatives to youtube-dl,
+#     but they only work with older versions of youtube,
+#     or are based on Python3, so incompatible with appengine
+# so i'm going to look into building the youtube app with django.
+# also note that appengine does not allow deleting or renaming
+# of projects, which is why this is still called jomyvideo :)
+
 import cgi
 import urllib2
 import webapp2
-
-from google.appengine.api import files # to use cloud storage api
 
 # home page has a CGI form to submit a web page to look at
 class Request(webapp2.RequestHandler):
@@ -11,25 +37,22 @@ class Request(webapp2.RequestHandler):
 		  <html>
 			<body>
 			  <form action="/result" method="post">
-				<input type="text" name="sitename" size=80><input type="submit" value="Submit URL">
+				<input type="text" name="sitename" size=60><input type="submit" value="Submit URL">
 			  </form>
 			</body>
 		  </html>""")
 
-# results page takes the submitted URL, reads its first line and saves to
-# google cloud storage
+# results page takes the submitted URL, reads it and displays content
 class Results(webapp2.RequestHandler):
     def post(self):
 		site = self.request.get('sitename')
-		first_line = urllib2.urlopen(site).readlines()[0]
-		self.response.write('web site=' + site)
+		# discovered that the standard urllib2.urlopen() call
+		# doesn't work on certain sites (e.g., wikipedia).
+		# so have to create a different User-Agent
+		req = urllib2.Request(site, headers={'User-Agent' : "Magic Browser"}) 
+		site_source = urllib2.urlopen(req).read()			
+		self.response.write(site_source)
 		
-		filename = '/gs/jomyvideo/source.txt'
-		writable_file_name = files.gs.create(filename, mime_type='application/octet-stream', acl='public-read')
-		with files.open(writable_file_name, 'a') as f:
-			f.write(first_line)
-		files.finalize(writable_file_name)
-
 app = webapp2.WSGIApplication([('/', Request),
 							   ('/result', Results)],
                               debug=True)
