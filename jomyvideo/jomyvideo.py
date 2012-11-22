@@ -1,22 +1,35 @@
+import cgi
 import urllib2
 import webapp2
 
 from google.appengine.api import files # to use cloud storage api
 
-class MainPage(webapp2.RequestHandler):
-  def get(self):
-      self.response.headers['Content-Type'] = 'text/plain'
-      first_line = urllib2.urlopen('http://www.scottaaronson.com').readlines()[1]
-      self.response.write('Hello2, my World!\n')
-      self.response.write(first_line)
+# home page has a CGI form to submit a web page to look at
+class Request(webapp2.RequestHandler):
+	def get(self):
+		self.response.out.write("""
+		  <html>
+			<body>
+			  <form action="/result" method="post">
+				<input type="text" name="sitename" size=80><input type="submit" value="Submit URL">
+			  </form>
+			</body>
+		  </html>""")
 
-      filename = '/gs/jomyvideo/my_file'
-      writable_file_name = files.gs.create(filename, mime_type='application/octet-stream', acl='public-read')
-      with files.open(writable_file_name, 'a') as f:
-        f.write('Hello World!')
-        f.write('This is my first Google Cloud Storage object!')
-        f.write('How exciting!')
-      files.finalize(writable_file_name)
+# results page takes the submitted URL, reads its first line and saves to
+# google cloud storage
+class Results(webapp2.RequestHandler):
+    def post(self):
+		site = self.request.get('sitename')
+		first_line = urllib2.urlopen(site).readlines()[0]
+		self.response.write('web site=' + site)
+		
+		filename = '/gs/jomyvideo/source.txt'
+		writable_file_name = files.gs.create(filename, mime_type='application/octet-stream', acl='public-read')
+		with files.open(writable_file_name, 'a') as f:
+			f.write(first_line)
+		files.finalize(writable_file_name)
 
-app = webapp2.WSGIApplication([('/', MainPage)],
+app = webapp2.WSGIApplication([('/', Request),
+							   ('/result', Results)],
                               debug=True)
