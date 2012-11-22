@@ -47,6 +47,9 @@ class Request(webapp2.RequestHandler):
 # results page takes the submitted URL, reads it and displays content
 class Results(webapp2.RequestHandler):
     def post(self):
+		# in retrospect, could probably have restricted via
+		# user authentication (plus checking that the authenticated
+		# user was on a whitelist) rather than using password encryption..
 		password = self.request.get('password')
 		password_hex = hashlib.sha512(password).hexdigest()
 		if password_hex == 'a954d57d365dae1e25c5c8a2a46e266acf5f32dcfedd2c232fa5aea46c0ec28de494a59c147f34752c931e43e0c29feb90e3ee80db76b58a5a1449dc0a33bc60':
@@ -58,9 +61,7 @@ class Results(webapp2.RequestHandler):
 			site_source = urllib2.urlopen(req).read()			
 			self.response.write(site_source)
 		else:
-			self.response.write('Invalid password.<br/>')
-			self.response.write(password + '<br/>')
-			self.response.write(password_hex)
+			self.response.write('Invalid password.')
 		
 app = webapp2.WSGIApplication([('/', Request),
 							   ('/result', Results)],
