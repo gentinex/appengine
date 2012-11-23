@@ -7,3 +7,4 @@ threadsafe: true
 handlers:
 - url: /.*
   script: jomyvideo.app
+  login: required

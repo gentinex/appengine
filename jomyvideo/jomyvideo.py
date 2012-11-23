@@ -27,42 +27,40 @@
 # of projects, which is why this is still called jomyvideo :)
 
 import cgi
-import hashlib
+import Cookie
+import os
 import urllib2
 import webapp2
+
+from google.appengine.api import users
 
 # home page has a CGI form to submit a web page to look at
 class Request(webapp2.RequestHandler):
 	def get(self):
-		self.response.out.write("""
-		  <html>
-			<body>
-			  <form action="/result" method="post">
-				URL <input type="text" name="sitename" size=60><br/>
-				Password <input type="password" name="password" size=60><input type="submit" value="Submit">
-			  </form>
-			</body>
-		  </html>""")
+	
+		user = users.get_current_user()
+		if user and str(user) in ['jomy.alappattu']:
+			self.response.out.write("""
+			  <html>
+				<body>
+				  <form action="/result" method="post">
+					<input type="text" name="sitename" size=60><input type="submit" value="Submit URL">
+				  </form>
+				</body>
+			  </html>""")
+		else:
+			self.redirect(users.create_login_url(self.request.uri))
 
 # results page takes the submitted URL, reads it and displays content
 class Results(webapp2.RequestHandler):
     def post(self):
-		# in retrospect, could probably have restricted via
-		# user authentication (plus checking that the authenticated
-		# user was on a whitelist) rather than using password encryption..
-		password = self.request.get('password')
-		password_hex = hashlib.sha512(password).hexdigest()
-		if password_hex == 'a954d57d365dae1e25c5c8a2a46e266acf5f32dcfedd2c232fa5aea46c0ec28de494a59c147f34752c931e43e0c29feb90e3ee80db76b58a5a1449dc0a33bc60':
-			site = self.request.get('sitename')
-			# discovered that the standard urllib2.urlopen() call
-			# doesn't work on certain sites (e.g., wikipedia).
-			# so have to create a different User-Agent
-			req = urllib2.Request(site, headers={'User-Agent' : "Magic Browser"}) 
-			site_source = urllib2.urlopen(req).read()			
-			self.response.write(site_source)
-		else:
-			self.response.write('Invalid password.')
-		
+		site = self.request.get('sitename')
+		# discovered that the standard urllib2.urlopen() call
+		# doesn't work on certain sites (e.g., wikipedia).
+		# so have to create a different User-Agent
+		req = urllib2.Request(site, headers={'User-Agent' : "Magic Browser"}) 
+		site_source = urllib2.urlopen(req).read()			
+		self.response.write(site_source)
+	
 app = webapp2.WSGIApplication([('/', Request),
-							   ('/result', Results)],
-                              debug=True)
+							   ('/result', Results)])
