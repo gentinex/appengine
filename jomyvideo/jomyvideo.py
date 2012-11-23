@@ -23,8 +23,9 @@
 #     but they only work with older versions of youtube,
 #     or are based on Python3, so incompatible with appengine
 # so i'm going to look into building the youtube app with django.
-# also note that appengine does not allow deleting or renaming
-# of projects, which is why this is still called jomyvideo :)
+# also note that appengine does not allow renaming of projects,
+# and though it does allow deleting, the url jomyvideo.appspot.com
+# can never be reused, so i opted to just still call this jomyvideo :)
 
 import cgi
 import Cookie
@@ -46,10 +47,16 @@ class Request(webapp2.RequestHandler):
 				  <form action="/result" method="post">
 					<input type="text" name="sitename" size=60><input type="submit" value="Submit URL">
 				  </form>
+				  <a href=\"%s\">Sign out</a>
 				</body>
-			  </html>""")
+			  </html>""" % users.create_logout_url("/"))
 		else:
-			self.redirect(users.create_login_url(self.request.uri))
+			if user:
+				self.response.out.write('Sorry, ' + str(user) + ' is not authorized to use this app.<br/>')
+			else:
+				self.response.out.write('Sorry, you need to be logged in to use this app.<br/>')
+			self.response.out.write("""<a href=\"%s\">Go to login screen</a>.""" \
+				% users.create_logout_url("/"))
 
 # results page takes the submitted URL, reads it and displays content
 class Results(webapp2.RequestHandler):
